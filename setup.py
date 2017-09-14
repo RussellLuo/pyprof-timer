@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 
 def get_info(name):
     basedir = os.path.dirname(__file__)
-    with open(os.path.join(basedir, 'pyprof_timer/__init__.py')) as f:
+    with open(os.path.join(basedir, 'pyprof_timer/__info__.py')) as f:
         locals = {}
         exec(f.read(), locals)
         return locals[name]

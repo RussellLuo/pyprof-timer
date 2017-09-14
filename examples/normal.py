@@ -1,8 +1,8 @@
 import time
 
 from flask import Flask
+from pyprof_timer import Tree
 from pyprof_timer.contrib.flask import FlaskTimer as Timer
-from pyprof_timer.tree import Tree
 
 app = Flask(__name__)
 
