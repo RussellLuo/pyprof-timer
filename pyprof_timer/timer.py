@@ -13,7 +13,20 @@ class _Context(object):
 
 
 class Timer(object):
-    """The base class for profiling a Python function or snippet."""
+    """The base class for profiling a Python function or snippet.
+
+    There are two types of timers:
+
+        Normal timer -- a timer that actually calculates the consuming time,
+                        you ought to call .start() and .stop() methods on it,
+                        and the span of the timer is the stopping time minus
+                        the starting time.
+
+        Dummy timer  -- a timer that represents a virtual composition of all
+                        its children timers, you need not to call .start()
+                        or .stop() methods on it, and the span of the timer
+                        is the sum of spans of all its children timers.
+    """
 
     __default_ctx = _Context()
     _ctx_timers = '_Timer_timers'

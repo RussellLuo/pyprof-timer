@@ -5,8 +5,16 @@ A timer for profiling a Python function or snippet.
 
 ## Installation
 
+Release version:
+
 ```bash
 $ pip install pyprof-timer
+```
+
+Development version:
+
+```bash
+$ pip install -e git+https://github.com/RussellLuo/pyprof-timer.git#egg=pyprof-timer
 ```
 
 
