@@ -31,9 +31,10 @@ class Timer(object):
     __default_ctx = _Context()
     _ctx_timers = '_Timer_timers'
 
-    def __init__(self, name, parent_name=None, dummy=False):
+    def __init__(self, name, parent_name=None, on_stop=None, dummy=False):
         self._name = name
         self._parent_name = parent_name
+        self._on_stop_callback = on_stop
         self._dummy = dummy
 
         self._start = None
@@ -115,6 +116,11 @@ class Timer(object):
             raise RuntimeError('timer %s: .start() has not been called' % self._name)
 
         self._stop = monotonic.monotonic()
+
+        # If a callback function is given, call it after the timer is stopped.
+        if self._on_stop_callback is not None:
+            self._on_stop_callback(self)
+
         return self
 
     def span(self, unit='s'):
