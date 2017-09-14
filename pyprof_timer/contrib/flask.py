@@ -4,7 +4,7 @@ from __future__ import absolute_import, unicode_literals
 
 from flask import g
 
-from pyprof_timer.timer import Timer
+from pyprof_timer import Timer
 
 
 class FlaskTimer(Timer):
