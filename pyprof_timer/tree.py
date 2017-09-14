@@ -4,9 +4,11 @@ from __future__ import absolute_import, unicode_literals
 
 from operator import itemgetter
 
+import six
 from tree_format import format_tree
 
 
+@six.python_2_unicode_compatible
 class Tree(object):
     """The class that represents the given timer and its children
     timers as a tree.
@@ -25,10 +27,7 @@ class Tree(object):
                     for child in self._timer.children]
         return node, children
 
-    def __unicode__(self):
+    def __str__(self):
         return format_tree(
             self.nodes, format_node=itemgetter(0), get_children=itemgetter(1)
         )
-
-    def __str__(self):
-        return self.__unicode__().encode('utf-8')

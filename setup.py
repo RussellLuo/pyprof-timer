@@ -28,6 +28,7 @@ setup(
     url='https://github.com/RussellLuo/pyprof-timer',
     install_requires=[
         'monotonic==1.3',
+        'six==1.10.0',
         'tree-format==0.1.1',
     ],
 )
