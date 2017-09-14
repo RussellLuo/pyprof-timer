@@ -7,9 +7,15 @@ import functools
 import monotonic
 
 
+class _Context(object):
+    """The context class specially used to create a default context."""
+    pass
+
+
 class Timer(object):
     """The base class for profiling a Python function or snippet."""
 
+    __default_ctx = _Context()
     _ctx_timers = '_Timer_timers'
 
     def __init__(self, name, parent_name=None, dummy=False):
@@ -32,8 +38,12 @@ class Timer(object):
                 self.parent.add_child(self)
 
     def _get_context(self):
-        """Returns the request context."""
-        raise NotImplementedError()
+        """Returns the default context.
+
+        NOTE: You should customize this method to use the framework-specific
+              context implementation if you are profiling the web service code.
+        """
+        return self.__default_ctx
 
     def _attach_to_context(self, name, timer):
         """Attach the given `timer` to the context."""
