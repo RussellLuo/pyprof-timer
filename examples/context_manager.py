@@ -21,16 +21,15 @@ def f2():
     time.sleep(0.1)
 
 
-@app.route("/")
-def hello():
-    t = Timer('hello', dummy=True)
-
-    with Timer('f1', parent_name='hello'):
-        f1()
-
-    with Timer('f2', parent_name='hello'):
-        f2()
-
+def show(t):
     print(Tree(t, span_unit='ms'))
 
-    return "Hello World!"
+
+@app.route("/")
+def hello():
+    with Timer('hello', on_stop=show):
+        with Timer('f1', parent_name='hello'):
+            f1()
+        with Timer('f2', parent_name='hello'):
+            f2()
+        return "Hello World!"

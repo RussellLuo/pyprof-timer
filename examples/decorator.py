@@ -23,13 +23,13 @@ def f2():
     time.sleep(0.1)
 
 
-@app.route("/")
-def hello():
-    t = Timer('hello', dummy=True)
-
-    f1()
-    f2()
-
+def show(t):
     print(Tree(t, span_unit='ms'))
 
+
+@app.route("/")
+@Timer('hello', on_stop=show)
+def hello():
+    f1()
+    f2()
     return "Hello World!"
