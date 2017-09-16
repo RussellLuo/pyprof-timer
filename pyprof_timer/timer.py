@@ -31,11 +31,13 @@ class Timer(object):
     __default_ctx = _Context()
     _ctx_timers = '_Timer_timers'
 
-    def __init__(self, name, parent_name=None, on_stop=None, dummy=False):
+    def __init__(self, name, parent_name=None, on_stop=None,
+                 dummy=False, display_name=None):
         self._name = name
         self._parent_name = parent_name
         self._on_stop_callback = on_stop
         self._dummy = dummy
+        self._display_name = display_name or name
 
         self._start = None
         self._stop = None
@@ -85,6 +87,10 @@ class Timer(object):
     @property
     def name(self):
         return self._name
+
+    @property
+    def display_name(self):
+        return self._display_name
 
     @property
     def parent(self):

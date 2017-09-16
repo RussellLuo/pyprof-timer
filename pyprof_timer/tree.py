@@ -22,7 +22,7 @@ class Tree(object):
     @property
     def nodes(self):
         span = self._span_fmt % self._timer.span(self._span_unit)
-        node = '%s (%s %s)' % (self._timer.name, span, self._span_unit)
+        node = '%s (%s %s)' % (self._timer.display_name, span, self._span_unit)
         children = [Tree(child, self._span_unit, self._span_fmt).nodes
                     for child in self._timer.children]
         return node, children
