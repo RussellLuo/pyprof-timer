@@ -39,21 +39,21 @@ $ curl localhost:5000
 ### Manual profiling
 
 ```
-hello (2710.51 ms)
-├── f1 (1106.89 ms)
-│   └── time.sleep(1) (1002.38 ms)
-└── f2 (1603.62 ms)
-    └── time.sleep(1.5) (1503.24 ms)
+2710.234ms  hello
+├── 1105.160ms  f1
+│   └── 1001.651ms  time.sleep(1)
+└── 1605.074ms  f2
+    └── 1504.913ms  time.sleep(1.5)
 
 ```
 
 ### Automatic profiling
 
 ```
-2508.580ms  hello  [/Users/russellluo/Projects/personal/pyprof-timer/examples/automatic.py:22]
-├── 1005.211ms  f1  [/Users/russellluo/Projects/personal/pyprof-timer/examples/automatic.py:10]
+2508.580ms  hello  [/Users/russellluo/projects/pyprof-timer/examples/automatic.py:22]
+├── 1005.211ms  f1  [/Users/russellluo/projects/pyprof-timer/examples/automatic.py:10]
 │   └── 1005.145ms  <time.sleep>
-└── 1503.251ms  f2  [/Users/russellluo/Projects/personal/pyprof-timer/examples/automatic.py:14]
+└── 1503.251ms  f2  [/Users/russellluo/projects/pyprof-timer/examples/automatic.py:14]
     └── 1503.165ms  <time.sleep>
 
 ```

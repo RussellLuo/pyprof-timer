@@ -33,6 +33,6 @@ def hello():
     f2()
     t.stop()
 
-    print(Tree(t.parent, span_unit='ms'))
+    print(Tree(Timer.first.parent, span_unit='ms'))
 
     return "Hello World!"
