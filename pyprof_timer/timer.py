@@ -8,9 +8,75 @@ import threading
 import monotonic
 
 
+class classproperty(property):
+    """A decorator that converts a method into a read-only class property.
+
+    Note:
+        You ought not to set the value of classproperty-decorated attributes!
+        The result of the behavior is undefined.
+    """
+
+    def __init__(self, fget, *args, **kwargs):
+        super(classproperty, self).__init__(classmethod(fget),
+                                            *args, **kwargs)
+
+    def __get__(self, obj, cls):
+        return self.fget.__get__(obj, cls)()
+
+
 class _ThreadLocalContext(threading.local):
     """The thread-local context class that is thread safe."""
     pass
+
+
+class _TimerMap(object):
+    """The map class that stores a timer mapping, which is attached
+    to a specific context.
+    """
+
+    _ctx_timers_name = '_TimerMap_timers'
+    _ctx_first_timer_name = '_TimerMap_first_timer'
+
+    def get_timers(self, context):
+        """Return the timers attached to the given context."""
+        timers = getattr(context, self._ctx_timers_name, None)
+        if timers is None:
+            timers = {}
+            setattr(context, self._ctx_timers_name, timers)
+        return timers
+
+    def get_first_timer(self, context):
+        """Return the first timer attached to the given context."""
+        return getattr(context, self._ctx_first_timer_name, None)
+
+    def set_first_timer(self, context, timer):
+        """Set the given timer as the first timer attached
+        to the given context.
+        """
+        return setattr(context, self._ctx_first_timer_name, timer)
+
+    def get_timer(self, context, name, timer_class=None):
+        """Return a specific timer with the given name
+        attached to the given context.
+        """
+        timers = self.get_timers(context)
+        timer = timers.get(name)
+        if timer is None and timer_class is not None:
+            # non-None `timer_class` hints that we need to create a
+            # dummy timer if it does not exist.
+            timer = timers[name] = timer_class(name, dummy=True)
+        return timer
+
+    def attach(self, context, name, timer):
+        """Attach the given `timer` to the given context."""
+        # Set the first attached timer if it does not exist.
+        if self.get_first_timer(context) is None:
+            self.set_first_timer(context, timer)
+
+        timers = self.get_timers(context)
+        if name in timers:
+            raise RuntimeError('timer name "%s" is duplicated' % name)
+        timers[name] = timer
 
 
 class Timer(object):
@@ -29,8 +95,9 @@ class Timer(object):
                         is the sum of spans of all its children timers.
     """
 
-    __default_ctx = _ThreadLocalContext()
-    _ctx_timers = '_Timer_timers'
+    _default_ctx = _ThreadLocalContext()
+
+    _timer_map = _TimerMap()
 
     def __init__(self, name, parent_name=None, on_stop=None,
                  dummy=False, display_name=None):
@@ -50,37 +117,28 @@ class Timer(object):
             # context, and usually the user will not call .start()
             # (and .stop()) on the dummy timer, so it is safe and *necessary*
             # to do context-related operations here.
-            self._attach_to_context(self._name, self)
+            self._timer_map.attach(self.get_context(), self._name, self)
             if self._parent_name is not None:
                 self.parent.add_child(self)
 
     @classmethod
     def get_context(cls):
-        """Returns the default context.
+        """Return the default context.
 
         NOTE: You can customize this method to use the framework-specific
               context implementation if you are profiling the web service code.
         """
-        return cls.__default_ctx
+        return cls._default_ctx
 
-    def _attach_to_context(self, name, timer):
-        """Attach the given `timer` to the context."""
-        timers = self._timers
-        if name in timers:
-            raise RuntimeError('timer name "%s" is duplicated' % name)
-        timers[name] = timer
+    @classproperty
+    def timers(cls):
+        """Return the timers attached to the context."""
+        return cls._timer_map.get_timers(cls.get_context())
 
-    @property
-    def _timers(self):
-        """Returns the timers attached to the context."""
-        ctx = self.get_context()
-
-        timers = getattr(ctx, self._ctx_timers, None)
-        if timers is None:
-            timers = {}
-            setattr(ctx, self._ctx_timers, timers)
-
-        return timers
+    @classproperty
+    def first(cls):
+        """Return the first timer attached to the context."""
+        return cls._timer_map.get_first_timer(cls.get_context())
 
     def add_child(self, timer):
         """Add the given `timer` as a child of the current timer."""
@@ -96,10 +154,8 @@ class Timer(object):
 
     @property
     def parent(self):
-        timers = self._timers
-        if self._parent_name not in timers:
-            timers[self._parent_name] = self.__class__(self._parent_name, dummy=True)
-        return timers[self._parent_name]
+        return self._timer_map.get_timer(self.get_context(),
+                                         self._parent_name, self.__class__)
 
     @property
     def children(self):
@@ -112,7 +168,7 @@ class Timer(object):
             # outside the request context, so the following two
             # context-related operations are delayed from the init-phase
             # to the start-phase (here).
-            self._attach_to_context(self._name, self)
+            self._timer_map.attach(self.get_context(), self._name, self)
             if self._parent_name is not None:
                 self.parent.add_child(self)
 
@@ -132,7 +188,7 @@ class Timer(object):
         return self
 
     def span(self, unit='s'):
-        """Returns the elapsed time as a fraction.
+        """Return the elapsed time as a fraction.
 
         unit:
             's'  -- in seconds (the default value)

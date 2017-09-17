@@ -12,5 +12,5 @@ class FlaskTimer(Timer):
 
     @classmethod
     def get_context(cls):
-        """Returns the request context."""
+        """Return the request context."""
         return g
