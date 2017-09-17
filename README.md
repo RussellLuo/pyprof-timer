@@ -20,11 +20,13 @@ $ pip install -e git+https://github.com/RussellLuo/pyprof-timer.git#egg=pyprof-t
 
 ## Quick start
 
-As an example, we can do a simple profiling on normal Python code:
+### Manual profiling
+
+Sometimes, we only want to measure the execution time of partial snippets or a few functions, then we can inject all timing points into our code manually by leveraging `Timer`:
 
 ```python
 
-# example.py
+# manual_example.py
 
 import time
 
@@ -40,7 +42,7 @@ def main():
     time.sleep(1.5)
     t.stop()
 
-    print(Tree(t.parent, span_unit='ms'))
+    print(Tree(Timer.first.parent))
 
 
 if __name__ == '__main__':
@@ -50,15 +52,67 @@ if __name__ == '__main__':
 Run the example code:
 
 ```bash
-$ python example.py
+$ python manual_example.py
 ```
 
 and it will show you the profiling result:
 
 ```
-main (2507.00 ms)
-├── sleep1 (1002.23 ms)
-└── sleep2 (1504.77 ms)
+2.503s  main
+├── 1.001s  sleep1
+└── 1.501s  sleep2
+
+```
+
+### Automatic profiling
+
+More commonly, chances are that we want to measure the execution time of an entry function and all its subfunctions. In this case, it's too tedious to do it manually, and we can leverage `Profiler` to inject all the timing points for us automatically:
+
+```python
+
+# automatic_example.py
+
+import time
+
+from pyprof_timer import Profiler, Tree
+
+
+def f1():
+    time.sleep(1)
+
+
+def f2():
+    time.sleep(1.5)
+
+
+def show(p):
+    print(Tree(p.first))
+
+
+@Profiler(on_disable=show)
+def main():
+    f1()
+    f2()
+
+
+if __name__ == '__main__':
+    main()
+```
+
+Run the example code:
+
+```bash
+$ python automatic_example.py
+```
+
+and it will show you the profiling result:
+
+```
+2.506s  main  [auto_example.py:18]
+├── 1.001s  f1  [auto_example.py:6]
+│   └── 1.001s  <time.sleep>
+└── 1.505s  f2  [auto_example.py:10]
+    └── 1.505s  <time.sleep>
 
 ```
 
@@ -74,11 +128,7 @@ Currently supported web frameworks:
 
 ## Examples
 
-For profiling web service code (involving web requests), see [examples](examples) as follows:
-
-- [normal](examples/normal.py)
-- [context manager](examples/context_manager.py)
-- [decorator](examples/decorator.py)
+For profiling web service code (involving web requests), check out [examples](examples).
 
 
 ## License
