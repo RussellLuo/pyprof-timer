@@ -72,7 +72,7 @@ More commonly, chances are that we want to measure the execution time of an entr
 
 # automatic_example.py
 
-import time
+import time # line number 1
 
 from pyprof_timer import Profiler, Tree
 
@@ -108,10 +108,10 @@ $ python automatic_example.py
 and it will show you the profiling result:
 
 ```
-2.506s  main  [auto_example.py:18]
-├── 1.001s  f1  [auto_example.py:6]
+2.506s  main  [automatic_example.py:18]
+├── 1.001s  f1  [automatic_example.py:6]
 │   └── 1.001s  <time.sleep>
-└── 1.505s  f2  [auto_example.py:10]
+└── 1.505s  f2  [automatic_example.py:10]
     └── 1.505s  <time.sleep>
 
 ```
