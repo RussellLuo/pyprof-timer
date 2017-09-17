@@ -3,17 +3,18 @@
 from __future__ import absolute_import, unicode_literals
 
 import functools
+import threading
 
 import monotonic
 
 
-class _Context(object):
-    """The context class specially used to create a default context."""
+class _ThreadLocalContext(threading.local):
+    """The thread-local context class that is thread safe."""
     pass
 
 
 class Timer(object):
-    """The base class for profiling a Python function or snippet.
+    """The timer class for profiling a Python function or snippet.
 
     There are two types of timers:
 
@@ -28,7 +29,7 @@ class Timer(object):
                         is the sum of spans of all its children timers.
     """
 
-    __default_ctx = _Context()
+    __default_ctx = _ThreadLocalContext()
     _ctx_timers = '_Timer_timers'
 
     def __init__(self, name, parent_name=None, on_stop=None,
@@ -53,13 +54,14 @@ class Timer(object):
             if self._parent_name is not None:
                 self.parent.add_child(self)
 
-    def _get_context(self):
+    @classmethod
+    def get_context(cls):
         """Returns the default context.
 
-        NOTE: You should customize this method to use the framework-specific
+        NOTE: You can customize this method to use the framework-specific
               context implementation if you are profiling the web service code.
         """
-        return self.__default_ctx
+        return cls.__default_ctx
 
     def _attach_to_context(self, name, timer):
         """Attach the given `timer` to the context."""
@@ -71,7 +73,7 @@ class Timer(object):
     @property
     def _timers(self):
         """Returns the timers attached to the context."""
-        ctx = self._get_context()
+        ctx = self.get_context()
 
         timers = getattr(ctx, self._ctx_timers, None)
         if timers is None:

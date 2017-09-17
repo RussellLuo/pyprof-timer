@@ -10,6 +10,7 @@ from pyprof_timer import Timer
 class FlaskTimer(Timer):
     """The timer implementation in Flask."""
 
-    def _get_context(self):
+    @classmethod
+    def get_context(cls):
         """Returns the request context."""
         return g
