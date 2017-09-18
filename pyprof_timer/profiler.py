@@ -25,11 +25,12 @@ class _NameCounter(object):
             self._counts = collections.defaultdict(int)
             setattr(context, self._ctx_counts_name, self._counts)
 
+    @staticmethod
+    def raw_name(frame, name):
+        return '%s%s' % (frame, name)
+
     def incr(self, frame, name):
         self._counts[(frame, name)] += 1
-
-    def raw_name(self, frame, name):
-        return '%s%s' % (frame, name)
 
     def unique_name(self, frame, name):
         """Return an unique name for function `name` in frame `frame`."""
@@ -104,10 +105,10 @@ class Profiler(object):
             '<sys.setprofile>',
             # the following line number need to be updated if the
             # actual line number of the method `enable()` is changed.
-            self._format_func_name(current_filename, 139, 'enable'),
+            self._format_func_name(current_filename, 140, 'enable'),
             # the following line number need to be updated if the
             # actual line number of the method `disable()` is changed.
-            self._format_func_name(current_filename, 149, 'disable'),
+            self._format_func_name(current_filename, 150, 'disable'),
         )
 
     @staticmethod
