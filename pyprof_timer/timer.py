@@ -111,15 +111,9 @@ class Timer(object):
         self._stop = None
         self._children = []
 
-        if self._dummy:
-            # If the timer is dummy (which means it will not be used as
-            # a decorator), then it will always be defined inside the request
-            # context, and usually the user will not call .start()
-            # (and .stop()) on the dummy timer, so it is safe and *necessary*
-            # to do context-related operations here.
-            self._timer_map.attach(self.get_context(), self._name, self)
-            if self._parent_name is not None:
-                self.parent.add_child(self)
+        self._timer_map.attach(self.get_context(), self._name, self)
+        if self._parent_name is not None:
+            self.parent.add_child(self)
 
     @classmethod
     def get_context(cls):
@@ -162,16 +156,6 @@ class Timer(object):
         return self._children
 
     def start(self):
-        if not self._dummy:
-            # If the timer is not dummy (which means it may be used as
-            # a decorator), there are times when the timer is instantiated
-            # outside the request context, so the following two
-            # context-related operations are delayed from the init-phase
-            # to the start-phase (here).
-            self._timer_map.attach(self.get_context(), self._name, self)
-            if self._parent_name is not None:
-                self.parent.add_child(self)
-
         self._start = monotonic.monotonic()
         return self
 
@@ -207,19 +191,22 @@ class Timer(object):
 
         return (self._stop - self._start) * multipliers[unit]
 
-    def __call__(self, func):
-        """Make the timer object to be a decorator."""
-        if self._dummy:
-            raise RuntimeError('Dummy timer ought not to be used as a decorator')
-
-        @functools.wraps(func)
-        def decorator(*args, **kwargs):
-            self.start()
-            try:
-                return func(*args, **kwargs)
-            finally:
-                self.stop()
-        return decorator
+    @classmethod
+    def time(cls, name, parent_name=None, on_stop=None, display_name=None):
+        """A decorator that will create a timer with the given arguments
+        at runtime to profile the given function dynamically.
+        """
+        def wrapper(func):
+            @functools.wraps(func)
+            def decorator(*args, **kwargs):
+                timer = cls(name, parent_name, on_stop, False, display_name)
+                timer.start()
+                try:
+                    return func(*args, **kwargs)
+                finally:
+                    timer.stop()
+            return decorator
+        return wrapper
 
     def __enter__(self):
         """Make the timer object to be a context manager."""
