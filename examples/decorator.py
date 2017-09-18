@@ -7,7 +7,7 @@ from pyprof_timer.contrib.flask import FlaskTimer as Timer
 app = Flask(__name__)
 
 
-@Timer('f1', parent_name='hello')
+@Timer.time('f1', parent_name='hello')
 def f1():
     with Timer('time.sleep(1)', parent_name='f1'):
         time.sleep(1)
@@ -15,7 +15,7 @@ def f1():
     time.sleep(0.1)
 
 
-@Timer('f2', parent_name='hello')
+@Timer.time('f2', parent_name='hello')
 def f2():
     with Timer('time.sleep(1.5)', parent_name='f2'):
         time.sleep(1.5)
@@ -28,7 +28,7 @@ def show(t):
 
 
 @app.route("/")
-@Timer('hello', on_stop=show)
+@Timer.time('hello', on_stop=show)
 def hello():
     f1()
     f2()
