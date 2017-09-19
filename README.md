@@ -42,7 +42,7 @@ def main():
     time.sleep(1.5)
     t.stop()
 
-    print(Tree(Timer.first.parent))
+    print(Tree(Timer.root))
 
 
 if __name__ == '__main__':
@@ -86,7 +86,7 @@ def f2():
 
 
 def show(p):
-    print(Tree(p.first))
+    print(Tree(p.root))
 
 
 @Profiler(on_disable=show)
