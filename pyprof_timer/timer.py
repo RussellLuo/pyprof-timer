@@ -7,6 +7,7 @@ import functools
 import threading
 
 import monotonic
+import six
 
 
 class classproperty(property):
@@ -47,8 +48,8 @@ class _TimerMap(object):
 
     def get_first(self, context):
         """Return the first timer in the timer mapping."""
-        v = self.get_map(context).values()
-        return v[0] if v else None
+        timers = self.get_map(context)
+        return next(iter(six.itervalues(timers)), None)
 
     def get(self, context, name):
         """Return a specific timer with the given name
