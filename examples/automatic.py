@@ -16,7 +16,7 @@ def f2():
 
 
 def show(p):
-    print(Tree(p.first, span_unit='ms'))
+    print(Tree(p.root, span_unit='ms'))
 
 
 @app.route("/")

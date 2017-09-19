@@ -157,9 +157,9 @@ class Profiler(object):
         return self
 
     @property
-    def first(self):
-        """The first timer attached to the context."""
-        return self._timer_class.first
+    def root(self):
+        """Return the root timer of the implicit entire timer tree."""
+        return self._timer_class.root
 
     def _profile(self, frame, event, arg):
         """The core handler used as the system’s profile function."""

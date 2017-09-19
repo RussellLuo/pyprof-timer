@@ -31,40 +31,35 @@ class _ThreadLocalContext(threading.local):
 
 
 class _TimerMap(object):
-    """The map class that stores a timer mapping, which is attached
+    """The map class that manages a timer mapping, which is attached
     to a specific context.
     """
 
     _ctx_timers_name = '_TimerMap_timers'
 
-    def get_timers(self, context):
-        """Return the timers attached to the given context."""
+    def get_map(self, context):
+        """Return the timer mapping attached to the given context."""
         timers = getattr(context, self._ctx_timers_name, None)
         if timers is None:
             timers = collections.OrderedDict()
             setattr(context, self._ctx_timers_name, timers)
         return timers
 
-    def get_first_timer(self, context):
-        """Return the first timer attached to the given context."""
-        v = self.get_timers(context).values()
+    def get_first(self, context):
+        """Return the first timer in the timer mapping."""
+        v = self.get_map(context).values()
         return v[0] if v else None
 
-    def get_timer(self, context, name, timer_class=None):
+    def get(self, context, name):
         """Return a specific timer with the given name
-        attached to the given context.
+        from the timer mapping.
         """
-        timers = self.get_timers(context)
-        timer = timers.get(name)
-        if timer is None and timer_class is not None:
-            # non-None `timer_class` hints that we need to create a
-            # dummy timer if it does not exist.
-            timer = timers[name] = timer_class(name, dummy=True)
-        return timer
+        timers = self.get_map(context)
+        return timers.get(name)
 
-    def attach(self, context, name, timer):
-        """Attach the given `timer` to the given context."""
-        timers = self.get_timers(context)
+    def add(self, context, name, timer):
+        """Add the given timer into the timer mapping."""
+        timers = self.get_map(context)
         if name in timers:
             raise RuntimeError('timer name "%s" is duplicated' % name)
         timers[name] = timer
@@ -102,9 +97,10 @@ class Timer(object):
         self._stop = None
         self._children = []
 
-        self._timer_map.attach(self.get_context(), self._name, self)
         if self._parent_name is not None:
             self.parent.add_child(self)
+
+        self._timer_map.add(self.get_context(), self._name, self)
 
     @classmethod
     def get_context(cls):
@@ -118,12 +114,14 @@ class Timer(object):
     @classproperty
     def timers(cls):
         """Return the timers attached to the context."""
-        return cls._timer_map.get_timers(cls.get_context())
+        return cls._timer_map.get_map(cls.get_context())
 
     @classproperty
-    def first(cls):
-        """Return the first timer attached to the context."""
-        return cls._timer_map.get_first_timer(cls.get_context())
+    def root(cls):
+        """Return the root timer of the implicit entire timer tree, which is
+        just the first timer attached to the context.
+        """
+        return cls._timer_map.get_first(cls.get_context())
 
     def add_child(self, timer):
         """Add the given `timer` as a child of the current timer."""
@@ -139,8 +137,14 @@ class Timer(object):
 
     @property
     def parent(self):
-        return self._timer_map.get_timer(self.get_context(),
-                                         self._parent_name, self.__class__)
+        if self._parent_name is None:
+            return None
+        else:
+            parent = self._timer_map.get(self.get_context(), self._parent_name)
+            if parent is None:
+                # We need to create a dummy parent timer if it does not exist.
+                parent = self.__class__(self._parent_name, dummy=True)
+            return parent
 
     @property
     def children(self):
