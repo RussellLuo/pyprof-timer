@@ -2,6 +2,7 @@
 
 from __future__ import absolute_import, unicode_literals
 
+import collections
 import functools
 import threading
 
@@ -35,25 +36,19 @@ class _TimerMap(object):
     """
 
     _ctx_timers_name = '_TimerMap_timers'
-    _ctx_first_timer_name = '_TimerMap_first_timer'
 
     def get_timers(self, context):
         """Return the timers attached to the given context."""
         timers = getattr(context, self._ctx_timers_name, None)
         if timers is None:
-            timers = {}
+            timers = collections.OrderedDict()
             setattr(context, self._ctx_timers_name, timers)
         return timers
 
     def get_first_timer(self, context):
         """Return the first timer attached to the given context."""
-        return getattr(context, self._ctx_first_timer_name, None)
-
-    def set_first_timer(self, context, timer):
-        """Set the given timer as the first timer attached
-        to the given context.
-        """
-        return setattr(context, self._ctx_first_timer_name, timer)
+        v = self.get_timers(context).values()
+        return v[0] if v else None
 
     def get_timer(self, context, name, timer_class=None):
         """Return a specific timer with the given name
@@ -69,10 +64,6 @@ class _TimerMap(object):
 
     def attach(self, context, name, timer):
         """Attach the given `timer` to the given context."""
-        # Set the first attached timer if it does not exist.
-        if self.get_first_timer(context) is None:
-            self.set_first_timer(context, timer)
-
         timers = self.get_timers(context)
         if name in timers:
             raise RuntimeError('timer name "%s" is duplicated' % name)
