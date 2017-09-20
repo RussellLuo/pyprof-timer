@@ -146,7 +146,7 @@ class Profiler(object):
     def disable(self):
         sys.setprofile(None)
 
-        # If a callback function is given, call it after the timer is disabled.
+        # If a callback function is given, call it after this profiler is disabled.
         if self._on_disable_callback is not None:
             self._on_disable_callback(self)
 

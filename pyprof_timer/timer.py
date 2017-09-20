@@ -161,7 +161,7 @@ class Timer(object):
 
         self._stop = monotonic.monotonic()
 
-        # If a callback function is given, call it after the timer is stopped.
+        # If a callback function is given, call it after this timer is stopped.
         if self._on_stop_callback is not None:
             self._on_stop_callback(self)
 
