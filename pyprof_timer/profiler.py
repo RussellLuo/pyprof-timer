@@ -87,7 +87,7 @@ class Profiler(object):
     @staticmethod
     def _is_c(event):
         """Judge if the given event happened on a C function."""
-        return event in ('c_call', 'c_return')
+        return event in ('c_call', 'c_return', 'c_exception')
 
     def _get_func_name(self, frame):
         fcode = frame.f_code
@@ -194,7 +194,7 @@ class Profiler(object):
                 parent_name=unique_parent_name,
                 display_name=func_name
             ).start()
-        elif event in ('return', 'c_return'):
+        elif event in ('return', 'exception', 'c_return', 'c_exception'):
             unique_func_name = self._counter.unique_name(frame, func_name)
             timer = self._timer_class.timers.get(unique_func_name)
             if timer is not None:
