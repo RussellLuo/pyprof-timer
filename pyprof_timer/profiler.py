@@ -6,7 +6,6 @@ import collections
 import functools
 import re
 import sys
-import time
 
 import six
 
@@ -60,12 +59,27 @@ class Profiler(object):
     function to measure its execution time.
     """
 
+    CALL_EVENTS = ('call', 'c_call')
+    RETURN_EVENTS = ('return', 'exception', 'c_return', 'c_exception')
+
     def __init__(self, timer_class=Timer, depth=None, on_disable=None):
         self._timer_class = timer_class
         self._depth = depth
         self._on_disable_callback = on_disable
 
-        self._counter = None
+        self._ctx_local_vars = dict(
+            # Mapping: context -> call_stack_depth [PER CONTEXT]
+            #                     (The depth of the call stack).
+            call_stack_depths={},
+            # Mapping: context -> frame_depth [PER CONTEXT]
+            #                     (Mapping: frame -> depth [PER FRAME],
+            #                                        relative to the first frame).
+            frame_depths={},
+
+            # Mapping: context -> counter [PER CONTEXT]
+            #                     (The helper to make unique function name).
+            counters={},
+        )
 
         # The excluded function is mainly due to the side effect of
         # enabling or disabling the profiler.
@@ -74,77 +88,45 @@ class Profiler(object):
             '<sys.setprofile>',
             # the following line number need to be updated if the
             # actual line number of the method `enable()` is changed.
-            self._format_func_name(current_filename, 138, 'enable'),
+            self._format_func_name(current_filename, 106, 'enable'),
             # the following line number need to be updated if the
             # actual line number of the method `disable()` is changed.
-            self._format_func_name(current_filename, 146, 'disable'),
+            self._format_func_name(current_filename, 119, 'disable'),
         )
 
     @staticmethod
     def _format_func_name(filename, firstlineno, name):
         return '{2}  [{0}:{1}]'.format(filename, firstlineno, name)
 
-    @staticmethod
-    def _is_c(event):
-        """Judge if the given event happened on a C function."""
-        return event in ('c_call', 'c_return', 'c_exception')
-
     def _get_func_name(self, frame):
         fcode = frame.f_code
         fn = (fcode.co_filename, fcode.co_firstlineno, fcode.co_name)
         return self._format_func_name(*fn)
 
-    @staticmethod
-    def _get_frame_depth(first_frame, frame):
-        """Return the depth from the given frame to the first frame."""
-        # Two scenarios:
-        #
-        # 1. If the profiler is used as a decorator, the frame of the
-        #    decorated function is the first frame, then the frame depths
-        #    of other functions can be calculated correctly, since all the
-        #    other functions are sub-functions of the first function.
-        #
-        # 2. If the profiler is used to wrap several functions at the same
-        #    level, the frame of the first function is the first frame, but
-        #    the frame depths of other functions at the same level can not
-        #    be calculated correctly, since we can not compare the frame of
-        #    any other same-leveled function with the first frame.
-        #
-        # To handle the above two cases consistently:
-        #     1. We define the *root frame* as the parent frame of the
-        #        first frame.
-        #     2. Then the actual depth is the root depth minus one.
-        root = first_frame.f_back
-
-        depth = 0
-        while frame != root:
-            frame = frame.f_back
-            depth += 1
-
-        return depth - 1
-
-    def _exceed_depth(self, frame, is_c):
-        """Judge if the given frame exceeds the specified depth."""
-        first_frame = self._counter.first_frame
-        if first_frame is None:
-            return False
-
-        if self._depth is None:
-            return False
-
-        depth = self._depth - 1 if is_c else self._depth
-        return self._get_frame_depth(first_frame, frame) > depth
-
     def enable(self):
         # It's necessary to delay calling `timer_class.get_context()` here
         # if this profiler is used as a decorator.
-        self._counter = _FrameNameCounter(self._timer_class.get_context())
+        ctx = self._timer_class.get_context()
+
+        # Attach the context local variables.
+        self._ctx_local_vars['call_stack_depths'][ctx] = -1
+        self._ctx_local_vars['frame_depths'][ctx] = {}
+        self._ctx_local_vars['counters'][ctx] = _FrameNameCounter(ctx)
 
         sys.setprofile(self._profile)
         return self
 
     def disable(self):
         sys.setprofile(None)
+
+        # It's necessary to delay calling `timer_class.get_context()` here
+        # if this profiler is used as a decorator.
+        ctx = self._timer_class.get_context()
+
+        # Detach the context local variables.
+        self._ctx_local_vars['call_stack_depths'].pop(ctx)
+        self._ctx_local_vars['frame_depths'].pop(ctx)
+        self._ctx_local_vars['counters'].pop(ctx)
 
         # If a callback function is given, call it after this profiler is disabled.
         if self._on_disable_callback is not None:
@@ -159,7 +141,11 @@ class Profiler(object):
 
     def _profile(self, frame, event, arg):
         """The core handler used as the system’s profile function."""
-        is_c = self._is_c(event)
+        ctx = self._timer_class.get_context()
+
+        # Judge if the given event happened on a C function.
+        # i.e. ('c_call', 'c_return', 'c_exception')
+        is_c = event.startswith('c_')
 
         if is_c:  # C function
             func_name = '<%s.%s>' % (arg.__module__, arg.__name__)
@@ -172,20 +158,35 @@ class Profiler(object):
         if func_name in self._excluded_func_names:
             return
 
-        # Ignore the function whose frame exceeds the specified depth.
-        if self._exceed_depth(frame, is_c):
+        current_depth = 0
+        frame_name = ('c_' if is_c else '') + unicode(frame)
+        if event in Profiler.CALL_EVENTS:
+            # Increment the depth of the call stack.
+            self._ctx_local_vars['call_stack_depths'][ctx] += 1
+
+            d = self._ctx_local_vars['call_stack_depths'][ctx]
+            current_depth = self._ctx_local_vars['frame_depths'][ctx][frame_name] = d
+        elif event in Profiler.RETURN_EVENTS:
+            # Decrement the depth of the call stack.
+            self._ctx_local_vars['call_stack_depths'][ctx] -= 1
+
+            current_depth = self._ctx_local_vars['frame_depths'][ctx].pop(frame_name)
+
+        # Ignore the frame if its depth exceeds the specified depth.
+        if self._depth is not None and current_depth > self._depth:
             return
 
-        if event in ('call', 'c_call'):
-            self._counter.incr(frame, func_name)
+        ctx_local_counter = self._ctx_local_vars['counters'][ctx]
+        if event in Profiler.CALL_EVENTS:
+            ctx_local_counter.incr(frame, func_name)
 
-            unique_func_name = self._counter.unique_name(frame, func_name)
+            unique_func_name = ctx_local_counter.unique_name(frame, func_name)
 
-            if frame is self._counter.first_frame:
+            if frame is ctx_local_counter.first_frame:
                 unique_parent_name = None
             else:
                 parent_name = self._get_func_name(parent_frame)
-                unique_parent_name = self._counter.unique_name(
+                unique_parent_name = ctx_local_counter.unique_name(
                     parent_frame, parent_name)
 
             # Create and start a timer for the entering function
@@ -194,8 +195,8 @@ class Profiler(object):
                 parent_name=unique_parent_name,
                 display_name=func_name
             ).start()
-        elif event in ('return', 'exception', 'c_return', 'c_exception'):
-            unique_func_name = self._counter.unique_name(frame, func_name)
+        elif event in Profiler.RETURN_EVENTS:
+            unique_func_name = ctx_local_counter.unique_name(frame, func_name)
             timer = self._timer_class.timers.get(unique_func_name)
             if timer is not None:
                 # Stop the timer for the exiting function
