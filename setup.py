@@ -25,8 +25,8 @@ setup(
     packages=find_packages(exclude=['tests']),
     url=about['__uri__'],
     install_requires=[
-        'monotonic==1.3',
-        'six==1.10.0',
+        'monotonic>=1.3',
+        'six>=1.10.0',
         'tree-format==0.1.1',
     ],
 )
