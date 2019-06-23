@@ -89,7 +89,7 @@ def show(p):
     print(Tree(p.root))
 
 
-@Profiler(on_disable=show)
+@Profiler(depth=2, on_disable=show)
 def main():
     f1()
     f2()
@@ -115,6 +115,8 @@ and it will show you the profiling result:
     └── 1.505s  <time.sleep>
 
 ```
+
+**NOTE**: If the parameter `depth` is missing, the **profiling output** will be **overwhelming** and the **runtime overhead** will be **high**.
 
 
 ## Supported frameworks
